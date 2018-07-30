@@ -24,6 +24,8 @@ java_library(
         "Controller.java"
     ],
     deps = [
-        "@org_slf4j_slf4j_api//jar"
+        "@org_slf4j_slf4j_api//jar",
+        "@commons_codec_commons_codec//jar",
+        "@org_bouncycastle_bcprov_jdk15on//jar"
     ]
 )
