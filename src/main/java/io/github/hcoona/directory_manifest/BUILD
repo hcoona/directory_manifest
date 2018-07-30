@@ -7,5 +7,23 @@ java_binary(
     srcs = [
         "App.java"
     ],
-    main_class = "io.github.hcoona.directory_manifest.App"
+    main_class = "io.github.hcoona.directory_manifest.App",
+    deps = [
+        ":directory_manifest_controller",
+        "@org_slf4j_slf4j_api//jar"
+    ],
+    runtime_deps = [
+        "@ch_qos_logback_logback_classic//jar",
+        "@ch_qos_logback_logback_core//jar"
+    ]
+)
+
+java_library(
+    name = "directory_manifest_controller",
+    srcs = [
+        "Controller.java"
+    ],
+    deps = [
+        "@org_slf4j_slf4j_api//jar"
+    ]
 )
