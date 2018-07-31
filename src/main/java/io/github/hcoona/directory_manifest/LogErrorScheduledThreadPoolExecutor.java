@@ -3,11 +3,16 @@ package io.github.hcoona.directory_manifest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.Callable;
+import java.util.concurrent.Delayed;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.RunnableScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class LogErrorScheduledThreadPoolExecutor
     extends ScheduledThreadPoolExecutor {
@@ -28,6 +33,61 @@ public class LogErrorScheduledThreadPoolExecutor
 
   public LogErrorScheduledThreadPoolExecutor(int corePoolSize, ThreadFactory threadFactory, RejectedExecutionHandler handler) {
     super(corePoolSize, threadFactory, handler);
+  }
+
+  @Override
+  protected <V> RunnableScheduledFuture<V> decorateTask(Callable<V> callable, RunnableScheduledFuture<V> task) {
+    return new RunnableScheduledFuture<V>() {
+      @Override
+      public boolean isPeriodic() {
+        return task.isPeriodic();
+      }
+
+      @Override
+      public long getDelay(TimeUnit unit) {
+        return task.getDelay(unit);
+      }
+
+      @Override
+      public int compareTo(Delayed o) {
+        return task.compareTo(o);
+      }
+
+      @Override
+      public void run() {
+        task.run();
+      }
+
+      @Override
+      public boolean cancel(boolean mayInterruptIfRunning) {
+        return task.cancel(mayInterruptIfRunning);
+      }
+
+      @Override
+      public boolean isCancelled() {
+        return task.isCancelled();
+      }
+
+      @Override
+      public boolean isDone() {
+        return task.isDone();
+      }
+
+      @Override
+      public V get() throws InterruptedException, ExecutionException {
+        return task.get();
+      }
+
+      @Override
+      public V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        return task.get(timeout, unit);
+      }
+
+      @Override
+      public String toString() {
+        return callable.toString();
+      }
+    };
   }
 
   @Override

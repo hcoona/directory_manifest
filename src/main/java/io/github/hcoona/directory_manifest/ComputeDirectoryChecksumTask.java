@@ -27,8 +27,7 @@ public class ComputeDirectoryChecksumTask extends ComputeChecksumTask {
     return dependencies;
   }
 
-  @Override
-  protected boolean readyCall() {
+  public boolean readyCall() {
     return dependencies.stream().allMatch(ComputeChecksumTask::isFinished);
   }
 

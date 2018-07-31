@@ -1,5 +1,6 @@
 package io.github.hcoona.directory_manifest;
 
+import com.google.common.base.MoreObjects;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,9 +15,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public abstract class ComputeChecksumTask implements Callable<String> {
 
@@ -50,12 +49,18 @@ public abstract class ComputeChecksumTask implements Callable<String> {
     this.parent = parent;
 
     if (parent != null) {
-      parent.getDependencies().add(this);
+      synchronized (parent) {
+        parent.getDependencies().add(this);
+      }
     }
   }
 
   public State getState() {
     return state;
+  }
+
+  void setState(State state) {
+    this.state = state;
   }
 
   public boolean isFinished() {
@@ -74,10 +79,14 @@ public abstract class ComputeChecksumTask implements Callable<String> {
     state = State.FINISHED;
     if (parent == null) {
       scheduledExecutorService.shutdown();
+      LOG.warn("ROOT computed, SHUTTING DOWN: " + toString()
+          + " dependencies: " + ((ComputeDirectoryChecksumTask) this).getDependencies().toString());
     } else {
+      // TODO: Could add dependency after submitted.
       synchronized (parent) {
         if (parent.readyCall() && parent.getState() == State.CREATED) {
-          Future<?> future = scheduledExecutorService.submit(parent);
+          parent.setState(State.SUBMITTED);
+          scheduledExecutorService.submit(parent);
         }
       }
     }
@@ -96,8 +105,15 @@ public abstract class ComputeChecksumTask implements Callable<String> {
 
   protected abstract String invokeCall() throws Exception;
 
-  protected boolean readyCall() {
-    return true;
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this)
+        .add("path", path)
+        .add("digestAlgorithm", digestUtils.getMessageDigest().getAlgorithm())
+        .add("state", state)
+        .add("type", Files.isDirectory(path) ? "DIRECTORY" : "FILE")
+        .add("isRoot", parent == null)
+        .toString();
   }
 
   private static String formatFileTime(FileTime fileTime) {
