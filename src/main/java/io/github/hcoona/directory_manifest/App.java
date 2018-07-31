@@ -20,6 +20,8 @@ public class App {
       controller.run();
     } catch (IOException e) {
       LOG.error("Failed to generate directory manifest", e);
+    } catch (InterruptedException e) {
+      LOG.error("Interrupted before it finished", e);
     }
   }
 }

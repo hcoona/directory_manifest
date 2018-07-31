@@ -21,11 +21,27 @@ java_binary(
 java_library(
     name = "directory_manifest_controller",
     srcs = [
-        "Controller.java"
+        "ComputeChecksumTask.java",
+        "ComputeDirectoryChecksumTask.java",
+        "ComputeFileChecksumTask.java",
+        "Controller.java",
+        "ManifestFileVisitor.java"
+    ],
+    deps = [
+        ":log_error_scheduled_thread_pool_executor",
+        "@org_slf4j_slf4j_api//jar",
+        "@commons_codec_commons_codec//jar",
+        "@com_google_guava_guava//jar",
+        "@org_bouncycastle_bcprov_jdk15on//jar"
+    ]
+)
+
+java_library(
+    name = "log_error_scheduled_thread_pool_executor",
+    srcs = [
+        "LogErrorScheduledThreadPoolExecutor.java"
     ],
     deps = [
         "@org_slf4j_slf4j_api//jar",
-        "@commons_codec_commons_codec//jar",
-        "@org_bouncycastle_bcprov_jdk15on//jar"
     ]
 )
