@@ -49,6 +49,10 @@ class Controller {
     Files.walkFileTree(
         dirPath, EnumSet.of(FileVisitOption.FOLLOW_LINKS),
         Integer.MAX_VALUE, manifestFileVisitor);
-    scheduledExecutorService.awaitTermination(10, TimeUnit.SECONDS);
+    if (scheduledExecutorService.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS)) {
+      LOG.info("Finished successfully");
+    } else {
+      LOG.error("Timed out before all calculation finished");
+    }
   }
 }

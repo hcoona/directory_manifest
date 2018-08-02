@@ -10,7 +10,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
 public class ComputeDirectoryChecksumTask extends ComputeChecksumTask {
-  private final Set<ComputeChecksumTask> dependencies;
+  final Set<ComputeChecksumTask> dependencies;
 
   public ComputeDirectoryChecksumTask(
       ScheduledExecutorService scheduledExecutorService,
@@ -23,8 +23,8 @@ public class ComputeDirectoryChecksumTask extends ComputeChecksumTask {
     this.dependencies = dependencies;
   }
 
-  public Set<ComputeChecksumTask> getDependencies() {
-    return dependencies;
+  public void addDependency(ComputeChecksumTask task) {
+    dependencies.add(task);
   }
 
   public boolean readyCall() {

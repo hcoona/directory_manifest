@@ -17,10 +17,11 @@ import java.util.Arrays;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ScheduledExecutorService;
 
-public abstract class ComputeChecksumTask implements Callable<String> {
+public abstract class ComputeChecksumTask
+    implements Callable<String>, Comparable<ComputeChecksumTask> {
 
   public enum State {
-    CREATED, SUBMITTED, RUNNING, FINISHED
+    CREATED, INITED, SUBMITTED, RUNNING, FINISHED
   }
 
   private static final Logger LOG =
@@ -50,7 +51,7 @@ public abstract class ComputeChecksumTask implements Callable<String> {
 
     if (parent != null) {
       synchronized (parent) {
-        parent.getDependencies().add(this);
+        parent.addDependency(this);
       }
     }
   }
@@ -80,11 +81,12 @@ public abstract class ComputeChecksumTask implements Callable<String> {
     if (parent == null) {
       scheduledExecutorService.shutdown();
       LOG.warn("ROOT computed, SHUTTING DOWN: " + toString()
-          + " dependencies: " + ((ComputeDirectoryChecksumTask) this).getDependencies().toString());
+          + " dependencies: "
+          + ((ComputeDirectoryChecksumTask) this).dependencies.toString());
     } else {
       // TODO: Could add dependency after submitted.
       synchronized (parent) {
-        if (parent.readyCall() && parent.getState() == State.CREATED) {
+        if (parent.readyCall() && parent.getState() == State.INITED) {
           parent.setState(State.SUBMITTED);
           scheduledExecutorService.submit(parent);
         }
@@ -114,6 +116,11 @@ public abstract class ComputeChecksumTask implements Callable<String> {
         .add("type", Files.isDirectory(path) ? "DIRECTORY" : "FILE")
         .add("isRoot", parent == null)
         .toString();
+  }
+
+  @Override
+  public int compareTo(ComputeChecksumTask o) {
+    return path.compareTo(o.path);
   }
 
   private static String formatFileTime(FileTime fileTime) {

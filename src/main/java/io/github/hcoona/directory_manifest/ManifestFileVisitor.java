@@ -11,7 +11,10 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashSet;
 import java.util.Stack;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledExecutorService;
+
+import static io.github.hcoona.directory_manifest.ComputeChecksumTask.State.INITED;
 
 class ManifestFileVisitor extends SimpleFileVisitor<Path> {
   private static final Logger LOG =
@@ -19,8 +22,8 @@ class ManifestFileVisitor extends SimpleFileVisitor<Path> {
 
   private final DigestUtils digest;
   private final ScheduledExecutorService scheduledExecutorService;
-  private final Stack<ComputeDirectoryChecksumTask> computeDirectoryChecksumTaskStack =
-      new Stack<>();
+  private final Stack<ComputeDirectoryChecksumTask>
+      computeDirectoryChecksumTaskStack = new Stack<>();
 
   public ManifestFileVisitor(DigestUtils digest,
       ScheduledExecutorService scheduledExecutorService) {
@@ -41,7 +44,7 @@ class ManifestFileVisitor extends SimpleFileVisitor<Path> {
     }
     ComputeDirectoryChecksumTask task = new ComputeDirectoryChecksumTask(
         scheduledExecutorService, digest,
-        dir, attrs, new HashSet<>(), parentTask);
+        dir, attrs, new ConcurrentSkipListSet<>(), parentTask);
     computeDirectoryChecksumTaskStack.push(task);
 
     return super.preVisitDirectory(dir, attrs);
@@ -52,6 +55,13 @@ class ManifestFileVisitor extends SimpleFileVisitor<Path> {
       Path dir, IOException exc) throws IOException {
     if (exc == null) {
       LOG.info(dir.toString());
+      ComputeDirectoryChecksumTask task = computeDirectoryChecksumTaskStack.pop();
+      synchronized (task) {
+        task.setState(INITED);
+        if (task.readyCall()) {
+          scheduledExecutorService.submit(task);
+        }
+      }
     }
     return super.postVisitDirectory(dir, exc);
   }
