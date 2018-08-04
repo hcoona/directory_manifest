@@ -1,44 +1,60 @@
 package io.github.hcoona.directory_manifest;
 
-import org.apache.commons.codec.digest.DigestUtils;
-
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.stream.Collectors;
 
 public class ComputeDirectoryChecksumTask extends ComputeChecksumTask {
-  final Set<ComputeChecksumTask> dependencies;
+  private final Set<ComputeChecksumTask> dependencies = new HashSet<>();
+  private boolean noFurtherDependency = false;
 
   public ComputeDirectoryChecksumTask(
-      ScheduledExecutorService scheduledExecutorService,
-      DigestUtils digestUtils,
-      Path path, BasicFileAttributes basicFileAttributes,
-      Set<ComputeChecksumTask> dependencies,
-      ComputeDirectoryChecksumTask parent) {
-    super(scheduledExecutorService, digestUtils,
-        path, basicFileAttributes, parent);
-    this.dependencies = dependencies;
+      ManifestFileVisitor manifestFileVisitor,
+      ComputeDirectoryChecksumTask parent,
+      Path path, BasicFileAttributes attrs) {
+    super(manifestFileVisitor, parent, path, attrs);
   }
 
-  public void addDependency(ComputeChecksumTask task) {
-    dependencies.add(task);
+  public void addDependency(ComputeChecksumTask computeChecksumTask) {
+    synchronized (dependencies) {
+      if (noFurtherDependency) {
+        throw new IllegalStateException("Cannot add dependency " + getPath()
+            + " -> " + computeChecksumTask.getPath());
+      } else {
+        dependencies.add(computeChecksumTask);
+      }
+    }
   }
 
-  public boolean readyCall() {
-    return dependencies.stream().allMatch(ComputeChecksumTask::isFinished);
+  public void setNoFurtherDependency() {
+    synchronized (dependencies) {
+      noFurtherDependency = true;
+    }
+  }
+
+  public boolean isReady() {
+    synchronized (dependencies) {
+      return noFurtherDependency
+          && dependencies.stream().allMatch(ComputeChecksumTask::isFinished);
+    }
   }
 
   @Override
-  protected String invokeCall() throws Exception {
-    if (!Files.isDirectory(path)) {
-      throw new IllegalStateException("Cannot deal with non-directory");
-    } else {
-      return digestUtils.digestAsHex(dependencies.stream()
-          .map(ComputeChecksumTask::getChecksum)
-          .collect(Collectors.joining("|")));
+  protected String doCall() throws Exception {
+    synchronized (dependencies) {
+      if (!noFurtherDependency) {
+        throw new IllegalStateException("Cannot calculate checksum for "
+            + "directory before all its dependencies added.");
+      }
+      if (!dependencies.stream().allMatch(ComputeChecksumTask::isFinished)) {
+        throw new IllegalStateException("Cannot calculate checksum for "
+            + "directory before all its dependencies calculated.");
+      }
+
+      return manifestFileVisitor.getDigest().digestAsHex(Arrays.toString(
+          dependencies.stream().map(t -> t.checksum).toArray()));
     }
   }
 }

@@ -99,7 +99,8 @@ public class LogErrorScheduledThreadPoolExecutor
   private static void logThrowableFromAfterExecute(Runnable r, Throwable t) {
     if (LOG.isDebugEnabled()) {
       LOG.debug("afterExecute in thread: " + Thread.currentThread().getName()
-          + ", runnable type: " + r.getClass().getName());
+          + ", runnable type: " + r.getClass().getName()
+          + ", runnable: " + r.toString());
     }
 
     //For additional information, see: https://docs.oracle

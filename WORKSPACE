@@ -6,6 +6,11 @@ maven_server(
 )
 
 maven_jar(
+    name = "org_apache_commons_commons_lang3",
+    artifact = "org.apache.commons:commons-lang3:3.7"
+)
+
+maven_jar(
     name = "commons_codec_commons_codec",
     artifact = "commons-codec:commons-codec:1.11"
 )
