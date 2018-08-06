@@ -150,4 +150,12 @@ public class ManifestFileVisitor extends SimpleFileVisitor<Path> {
     ZonedDateTime t = Instant.ofEpochMilli(cTime).atZone(ZoneId.of("UTC"));
     return ISO_8601_FORMATTER.format(t);
   }
+
+  public DigestUtils getDigest() {
+    return this.digest;
+  }
+
+  public ScheduledExecutorService getScheduledExecutorService() {
+    return this.scheduledExecutorService;
+  }
 }

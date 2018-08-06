@@ -5,54 +5,33 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 public class ComputeDirectoryChecksumTask extends ComputeChecksumTask {
-  private final Set<ComputeChecksumTask> dependencies = new HashSet<>();
-  private boolean noFurtherDependency = false;
+  private final Set<CompletableFuture<String>> dependencies = new HashSet<>();
 
   public ComputeDirectoryChecksumTask(
       ManifestFileVisitor manifestFileVisitor,
-      ComputeDirectoryChecksumTask parent,
       Path path, BasicFileAttributes attrs) {
-    super(manifestFileVisitor, parent, path, attrs);
+    super(manifestFileVisitor, path, attrs);
   }
 
-  public void addDependency(ComputeChecksumTask computeChecksumTask) {
+  public void addDependency(CompletableFuture<String> future) {
     synchronized (dependencies) {
-      if (noFurtherDependency) {
-        throw new IllegalStateException("Cannot add dependency " + getPath()
-            + " -> " + computeChecksumTask.getPath());
-      } else {
-        dependencies.add(computeChecksumTask);
-      }
-    }
-  }
-
-  public void setNoFurtherDependency() {
-    synchronized (dependencies) {
-      noFurtherDependency = true;
-    }
-  }
-
-  public boolean isReady() {
-    synchronized (dependencies) {
-      return noFurtherDependency
-          && dependencies.stream().allMatch(ComputeChecksumTask::isFinished);
+      dependencies.add(future);
     }
   }
 
   @Override
-  protected String doCall() throws Exception {
+  protected String doGet() throws Exception {
     synchronized (dependencies) {
-      if (!noFurtherDependency) {
-        throw new IllegalStateException("Cannot calculate checksum for "
-            + "directory before all its dependencies added.");
-      }
-      if (!dependencies.stream().allMatch(ComputeChecksumTask::isFinished)) {
-        throw new IllegalStateException("Cannot calculate checksum for "
-            + "directory before all its dependencies calculated.");
-      }
+      CompletableFuture<?>[] tasks = new CompletableFuture<?>[dependencies.size()];
+      CompletableFuture
+          .allOf(dependencies.toArray(tasks))
+          .thenApplyAsync(ignored -> {
 
+          })
+      manifestFileVisitor.getScheduledExecutorService()
       return manifestFileVisitor.getDigest().digestAsHex(Arrays.toString(
           dependencies.stream().map(t -> t.checksum).toArray()));
     }
